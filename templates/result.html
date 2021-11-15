@@ -103,7 +103,7 @@
             </nav>
         </div>
         {% if graph %}
-            <div class="container" style="padding-left: 10%;" >
+            <div class="container" style="padding-left: 25%;" >
             {% autoescape off %}
                 {{ graph }}
             {% endautoescape %}
@@ -115,8 +115,8 @@
             </nav>
         </div>
         {% if graph %}
-            <div class="container" style="padding-left: 10%;padding-top: 5%;" >
-                <p style="width: 50%;">{{ graph2D|safe }}</p>
+            <div class="container" style="padding-left: 25%;padding-top: 5%;" >
+                {{ graph2D|safe }}
             </div>
         {% endif %}
 

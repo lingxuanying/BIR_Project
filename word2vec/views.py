@@ -120,8 +120,8 @@ def display_pca_scatterplot_3D(model, user_input=None, words=None, label=None, c
             family=" Courier New ",
             size=15),
         autosize=False,
-        width=1000,
-        height=1000
+        width=700,
+        height=700
     )
 
     plot_figure = go.Figure(data=data, layout=layout)
@@ -201,8 +201,8 @@ def display_pca_scatterplot_2D(model, user_input=None, words=None, label=None, c
             family=" Courier New ",
             size=15),
         autosize=False,
-        width=1000,
-        height=1000
+        width=700,
+        height=700
     )
 
     plot_figure = go.Figure(data=data, layout=layout)
