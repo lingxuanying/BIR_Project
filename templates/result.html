@@ -43,7 +43,7 @@
             background-color: #fafa96;
         }
         .table{
-            padding: 30px;
+            padding: 50px;
             margin-left: auto;
             margin-right: auto;
             width: 85%;
@@ -66,59 +66,38 @@
                         <li class="nav-item mx-0 mx-lg-1"><a class="nav-link py-3 px-0 px-lg-3 rounded" href="/statistics">STATISTICS</a></li>
 
                     </ul>
-                    <input placeholder="多個詞請以空白鍵隔開" id="myText" name="search_text" type="text" style="width:50%;padding-right: 20px;">
+                    <input id="myText" name="search_text" type="text" style="width:50%;padding-right: 20px;">
                     <button onclick="myFunction()" style="margin-right: 50px;">Search</button>
                 </div>
             </div>
         </nav>
+
         <div class="container" style="width: 85%;line-height: 30px;padding-top: 120px;" >
             <nav class="navbar navbar-expand-lg navbar-light bg-light navbar-username">
-                <a class="navbar-brand ">TOP 5 Cosine Similarity</a>
+                <a class="navbar-brand ">Sentence Ranking</a>
             </nav>
+        </div>
+        <div class="container" style="width: 95%;" >
             <table border="1" class="table" >
                 <thead>
                 <tr>
                     <th>Rank</th>
-                    {% for i in user_input %}
-                        <th>{{ i }}</th>
-                    {% endfor %}
+                    <th>Abstract</th>
+                    <th>TFIDF</th>
 
                 </tr>
                 </thead>
-                {% for i in top%}
-                    <tr>
+
+                    {% for i in target_sentence%}
+                        <tr>
                         <td>{{ forloop.counter0 | add:1 }}</td>
-                        {% for j in i %}
-                            <td>{{ j }}</td>
-                        {% endfor %}
+                        <td>{{ i.1|safe }}</td>
+                        <td style="width: 10%;">{{ i.0 }}</td>
+                        </tr>
+                    {% endfor %}
 
-
-                    </tr>
-                {% endfor %}
             </table>
         </div>
-        <div class="container" style="width: 85%;line-height: 30px;" >
-            <nav class="navbar navbar-expand-lg navbar-light bg-light navbar-username">
-                <a class="navbar-brand ">Word2Vec 3D Distribution</a>
-            </nav>
-        </div>
-        {% if graph %}
-            <div class="container" style="padding-left: 25%;" >
-            {% autoescape off %}
-                {{ graph }}
-            {% endautoescape %}
-            </div>
-        {% endif %}
-        <div class="container" style="width: 85%;line-height: 30px;" >
-            <nav class="navbar navbar-expand-lg navbar-light bg-light navbar-username">
-                <a class="navbar-brand ">Word2Vec 2D Distribution</a>
-            </nav>
-        </div>
-        {% if graph %}
-            <div class="container" style="padding-left: 25%;padding-top: 5%;" >
-                {{ graph2D|safe }}
-            </div>
-        {% endif %}
 
     <script>
         function myFunction() {
