@@ -20,6 +20,8 @@ from word2vec import views
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.index),
-    path('search/<str:text>', views.search),
+    path('<str:tf_form>/<str:text>/<str:type>', views.search),
     path('statistics', views.statistics),
+    path('structure', views.structure),
+
 ]
