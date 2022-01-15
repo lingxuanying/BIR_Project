@@ -15,6 +15,7 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk import pos_tag
 from gensim import corpora
 from gensim.summarization import bm25
+import random
 nltk.download('averaged_perceptron_tagger')
 nltk.download('punkt')
 tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
@@ -28,33 +29,30 @@ def index(request):
 
 def cal_bm25(input_word, article_row):
     p_stemmer = PorterStemmer()
+    for i in range(len(input_word)):
+        input_word[i] = input_word[i].split('%')[0]
+    #print(input_word)
     global tokenizer
     text = []
     # print(article_row)
-    if (not pd.isnull(article_row)):
-        # print(article_row)
-        article_row = tokenizer.tokenize(article_row)
+    scores = []
+    if (len(article_row)>0):
         article_list = []
-
         for a in article_row:
             a_split = a.replace('?', ' ').replace('(', ' ').replace(')', ' ').split(' ')
             # 詞干提取
             stemmed_tokens = [p_stemmer.stem(i) for i in a_split]
             article_list.append(stemmed_tokens)
 
-        #print(article_list)
-
-        query = [input_word]
+        query = input_word
         query_stemmed = [p_stemmer.stem(i) for i in query]
-        print('query_stemmed :', query_stemmed)
 
         # bm25模型
         bm25Model = bm25.BM25(article_list)
         # 逆文件頻率
         average_idf = sum(map(lambda k: float(bm25Model.idf[k]), bm25Model.idf.keys())) / len(bm25Model.idf.keys())
         scores = bm25Model.get_scores(query_stemmed, average_idf)
-        print('scores :', scores)
-        print(bm25Model.idf)
+    return scores
 
 def search(request, tf_form, text, type):
     global input_word
@@ -71,9 +69,10 @@ def search(request, tf_form, text, type):
         if(ps.stem(i.split('%')[0])==input_word):
             target_col.append(i)
 
-    target_abstract = []
     num_per_class = 250
     target_sentence = []
+    target_sentence_bm25 = []
+    type_list = []
     for i in range(len(tfidf)):
         find = False
         for j in target_col:
@@ -89,7 +88,7 @@ def search(request, tf_form, text, type):
                     data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\covid19\\' + str(i // 10 + 1 - 75) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
                 #cal_sentence(i, data['abstract'][i % 10])
                 for k in sent_tokenize(data['abstract'][i % 10]):  # j for every sentence
-                    find = False
+                    find_s = False
                     temp = []
                     for l in word_tokenize(k):  # k for every words
                         temp.append(l.lower())
@@ -98,23 +97,43 @@ def search(request, tf_form, text, type):
                     for l in range(len(tokens_tag)):
                         temp[l] = temp[l] + '%' + tokens_tag[l][1].lower()
                         for m in target_col:
-                            if (m == temp[l] and not find):
-                                find = True
+                            if (m == temp[l] and not find_s):
+                                find_s = True
                                 score = tfidf[m][i]
-
+                                double = False
                                 if (type == "aki" and i < num_per_class):
-                                    score = score * 2
+                                    double = True
                                 elif (type == "diabetes_mellitus" and i >= num_per_class and i < 2 * num_per_class):
-                                    score = score * 2
+                                    double = True
                                 elif (type == "heart_disease" and i >= 2 * num_per_class and i < 3 * num_per_class):
-                                    score = score * 2
+                                    double = True
                                 elif (type == "covid19" and i >= 3 * num_per_class and i < 4 * num_per_class):
-                                    score = score * 2
-
-
+                                    double = True
+                                type_list.append([i//250, double])
+                                target_sentence_bm25.append(k)
                                 #cal_bm25(temp[l].split('%')[0], k)
                                 target_sentence.append([round(score, 2), k.replace(" " + temp[l].split('%')[0], " <mark>" + temp[l].split('%')[0] + "</mark>")])
-    target_sentence = sorted(target_sentence, reverse = True)
+
+    score_bm25 = cal_bm25(target_col, target_sentence_bm25)
+    for i in range(len(target_sentence)):
+        if(score_bm25[i]==0):
+            score_bm25[i] = 0.1 + random.randint(0, 10)/100.0 # if bm25_score = 0, random(0.1x)
+
+        if(type_list[i][1]):# double by theme
+            target_sentence[i][0] = 2 * target_sentence[i][0]
+            score_bm25[i] = 2 * score_bm25[i]
+        target_sentence[i].append(round(score_bm25[i], 2)) # [tf_score, abstract, bm25_score]
+
+        if(type_list[i][0] == 0): target_sentence[i].append('AKI')
+        elif (type_list[i][0] == 1): target_sentence[i].append('Diabetes Mellitus')
+        elif (type_list[i][0] == 2): target_sentence[i].append('Heart Disease')
+        elif (type_list[i][0] == 3): target_sentence[i].append('COVID 19') # [tf_score, abstract, bm25_score, type]
+        #print(target_sentence[i])
+
+    if(tf_form=='tfidf'):
+        target_sentence = sorted(target_sentence, reverse = True)
+    else:
+        target_sentence = sorted(target_sentence, key = lambda x: x[2], reverse = True)
     return render(request, "result.html", {'target_sentence': target_sentence[:50]})
 
 

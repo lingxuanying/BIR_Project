@@ -103,11 +103,8 @@
                             TF Form
                             </a>
                             <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
-                                <a class="dropdown-item" onclick="myFunction('normal')">Normal</a>
-                                <a class="dropdown-item" onclick="myFunction('logarithm')">Logarithm</a>
-                                <a class="dropdown-item" onclick="myFunction('augmented')">Augmented</a>
-                                <a class="dropdown-item" onclick="myFunction('boolean')">Boolean</a>
-                                <a class="dropdown-item" onclick="myFunction('log_avg')">Log Average</a>
+                                <a class="dropdown-item" onclick="myFunction('tfidf')">TFIDF</a>
+                                <a class="dropdown-item" onclick="myFunction('bm25')">BM25</a>
 
                             </div>
                         </li>
@@ -153,7 +150,9 @@
                 <tr>
                     <th>Rank</th>
                     <th>Abstract</th>
+                    <th>Type</th>
                     <th>TFIDF</th>
+                    <th>BM25</th>
 
                 </tr>
                 </thead>
@@ -162,7 +161,9 @@
                         <tr>
                         <td>{{ forloop.counter0 | add:1 }}</td>
                         <td>{{ i.1|safe }}</td>
+                        <td style="width: 10%;">{{ i.3 }}</td>
                         <td style="width: 10%;">{{ i.0 }}</td>
+                        <td style="width: 10%;">{{ i.2 }}</td>
                         </tr>
                     {% endfor %}
 
@@ -172,6 +173,9 @@
     <script>
         function myFunction(tf_form) {
             var text = document.getElementById("myText").value;
+            if(text==''){
+                text = 'none'
+            }
             location.href = "/"+tf_form+"/"+text+"/normal";
         }
     </script>
