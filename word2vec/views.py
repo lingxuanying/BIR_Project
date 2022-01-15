@@ -64,7 +64,7 @@ def search(request, tf_form, text, type):
         input_word = text
         input_word = ps.stem(input_word)
 
-    tfidf = pd.read_csv(os.path.join(settings.BASE_DIR, 'tfidf (2).csv'), encoding='utf-8', engine='python')
+    tfidf = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\tfidf (2).csv'), encoding='utf-8', engine='python')
     #print(input_word)
     target_col = []
     for i in list(tfidf.columns):
@@ -80,13 +80,13 @@ def search(request, tf_form, text, type):
             if(tfidf[j][i]>0 and not find):
                 find = True
                 if(i < num_per_class):
-                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'data\\AKI\\'+str(i//10+1)+'.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
+                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\AKI\\'+str(i//10+1)+'.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
                 elif (i >= num_per_class and i < 2 * num_per_class):
-                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'data\\diabetes mellitus\\' + str(i // 10 + 1 - 25) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
+                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\diabetes mellitus\\' + str(i // 10 + 1 - 25) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
                 elif (i >= 2 * num_per_class and i < 3 * num_per_class):
-                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'data\\heart disease\\' + str(i // 10 + 1 - 50) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
+                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\heart disease\\' + str(i // 10 + 1 - 50) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
                 else:
-                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'data\\covid19\\' + str(i // 10 + 1 - 75) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
+                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\covid19\\' + str(i // 10 + 1 - 75) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
                 #cal_sentence(i, data['abstract'][i % 10])
                 for k in sent_tokenize(data['abstract'][i % 10]):  # j for every sentence
                     find = False
