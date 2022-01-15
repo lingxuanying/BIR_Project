@@ -112,7 +112,14 @@ def search(request, tf_form, text, type):
                                 type_list.append([i//250, double])
                                 target_sentence_bm25.append(k)
                                 #cal_bm25(temp[l].split('%')[0], k)
-                                target_sentence.append([round(score, 2), k.replace(" " + temp[l].split('%')[0], " <mark>" + temp[l].split('%')[0] + "</mark>")])
+
+                                replaced_s = k.replace(" " + temp[l].split('%')[0], " <mark>" + temp[l].split('%')[0] + "</mark>")
+
+                                # Replace the title keyword
+                                insensitive = re.compile(re.escape(temp[l].split('%')[0]+" "), re.IGNORECASE)
+                                replaced_s = insensitive.sub("<mark>" + temp[l].split('%')[0].capitalize() + "</mark> ", replaced_s)
+
+                                target_sentence.append([round(score, 2), replaced_s])
 
     score_bm25 = cal_bm25(target_col, target_sentence_bm25)
     for i in range(len(target_sentence)):
@@ -137,8 +144,3 @@ def search(request, tf_form, text, type):
     return render(request, "result.html", {'target_sentence': target_sentence[:50]})
 
 
-def statistics(request):
-    return render(request, "statistics.html") #必须用这个return
-
-def structure(request):
-    return render(request, "structure.html") #必须用这个return
