@@ -21,6 +21,8 @@ nltk.download('punkt')
 tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
 
 input_word = ""
+target_col = []
+target_sentence = []
 
 
 # Create your views here.
@@ -54,8 +56,26 @@ def cal_bm25(input_word, article_row):
         scores = bm25Model.get_scores(query_stemmed, average_idf)
     return scores
 
+def read_data(index):
+    num_per_class = 250
+    if (index < num_per_class):
+        data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\AKI\\' + str(index // 10 + 1) + '.csv'), encoding='utf-8', engine='python')
+
+    elif (index >= num_per_class and index < 2 * num_per_class):
+        data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\diabetes mellitus\\' + str(index // 10 + 1 - 25) + '.csv'), encoding='utf-8', engine='python')
+
+    elif (index >= 2 * num_per_class and index < 3 * num_per_class):
+        data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\heart disease\\' + str(index // 10 + 1 - 50) + '.csv'), encoding='utf-8', engine='python')
+
+    else:
+        data = pd.read_csv(os.path.join(settings.BASE_DIR,'word2vec\\static\\assets\\docs\\covid19\\' + str(index // 10 + 1 - 75) + '.csv'),encoding='utf-8', engine='python')
+
+    return data
+
 def search(request, tf_form, text, type):
     global input_word
+    global target_col
+    global target_sentence
     ps = PorterStemmer()
 
     if(text!='none' and input_word!=ps.stem(text)):
@@ -78,17 +98,11 @@ def search(request, tf_form, text, type):
         for j in target_col:
             if(tfidf[j][i]>0 and not find):
                 find = True
-                if(i < num_per_class):
-                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\AKI\\'+str(i//10+1)+'.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
-                elif (i >= num_per_class and i < 2 * num_per_class):
-                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\diabetes mellitus\\' + str(i // 10 + 1 - 25) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
-                elif (i >= 2 * num_per_class and i < 3 * num_per_class):
-                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\heart disease\\' + str(i // 10 + 1 - 50) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
-                else:
-                    data = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\covid19\\' + str(i // 10 + 1 - 75) + '.csv'), encoding='utf-8', engine='python', usecols=['abstract'])
+                data = read_data(i)
                 #cal_sentence(i, data['abstract'][i % 10])
+                find_s = False
                 for k in sent_tokenize(data['abstract'][i % 10]):  # j for every sentence
-                    find_s = False
+
                     temp = []
                     for l in word_tokenize(k):  # k for every words
                         temp.append(l.lower())
@@ -110,7 +124,7 @@ def search(request, tf_form, text, type):
                                 elif (type == "covid19" and i >= 3 * num_per_class and i < 4 * num_per_class):
                                     double = True
                                 type_list.append([i//250, double])
-                                target_sentence_bm25.append(k)
+                                target_sentence_bm25.append(k) #[abstract]
                                 #cal_bm25(temp[l].split('%')[0], k)
 
                                 replaced_s = k.replace(" " + temp[l].split('%')[0], " <mark>" + temp[l].split('%')[0] + "</mark>")
@@ -119,7 +133,7 @@ def search(request, tf_form, text, type):
                                 insensitive = re.compile(re.escape(temp[l].split('%')[0]+" "), re.IGNORECASE)
                                 replaced_s = insensitive.sub("<mark>" + temp[l].split('%')[0].capitalize() + "</mark> ", replaced_s)
 
-                                target_sentence.append([round(score, 2), replaced_s])
+                                target_sentence.append([round(score, 2), i, data['title'][i % 10]])
 
     score_bm25 = cal_bm25(target_col, target_sentence_bm25)
     for i in range(len(target_sentence)):
@@ -129,18 +143,50 @@ def search(request, tf_form, text, type):
         if(type_list[i][1]):# double by theme
             target_sentence[i][0] = 2 * target_sentence[i][0]
             score_bm25[i] = 2 * score_bm25[i]
-        target_sentence[i].append(round(score_bm25[i], 2)) # [tf_score, abstract, bm25_score]
+        target_sentence[i].append(round(score_bm25[i], 2)) # [tf_score, index, abstract, bm25_score]
 
         if(type_list[i][0] == 0): target_sentence[i].append('AKI')
         elif (type_list[i][0] == 1): target_sentence[i].append('Diabetes Mellitus')
         elif (type_list[i][0] == 2): target_sentence[i].append('Heart Disease')
-        elif (type_list[i][0] == 3): target_sentence[i].append('COVID 19') # [tf_score, abstract, bm25_score, type]
+        elif (type_list[i][0] == 3): target_sentence[i].append('COVID 19') # [tf_score, index, abstract, bm25_score, type]
         #print(target_sentence[i])
 
     if(tf_form=='tfidf'):
         target_sentence = sorted(target_sentence, reverse = True)
     else:
-        target_sentence = sorted(target_sentence, key = lambda x: x[2], reverse = True)
+        target_sentence = sorted(target_sentence, key = lambda x: x[3], reverse = True)
     return render(request, "result.html", {'target_sentence': target_sentence[:50]})
 
+
+
+def article(request, index):
+    global input_word
+    global target_col
+    global target_sentence
+    index = int(index)
+    num_per_class = 250
+    recom_index = random.sample(range(len(target_sentence)), 5)
+    recom_article = []
+
+    # read title, abstract
+    data = read_data(index)
+
+    # mark
+    text = ""
+    for i in sent_tokenize(data['abstract'][index % 10]):  # j for every sentence
+        replaced_s = i
+        for j in target_col:
+            replaced_s = replaced_s.replace(" " + j.split('%')[0], " <mark>" + j.split('%')[0] + "</mark>")
+
+            # Replace the title keyword
+            insensitive = re.compile(re.escape(j.split('%')[0] + " "), re.IGNORECASE)
+            replaced_s = insensitive.sub("<mark>" + j.split('%')[0].capitalize() + "</mark> ", replaced_s)
+        text = text + replaced_s
+
+    # random recommend
+    for i in recom_index:
+        recom_data = read_data(target_sentence[i][1])
+        recom_article.append([target_sentence[i][1], recom_data['title'][target_sentence[i][1] % 10]])
+
+    return render(request, "article.html", {'title': data['title'][index % 10], 'abstract': text, 'recom_data': recom_article}) #必须用这个return
 

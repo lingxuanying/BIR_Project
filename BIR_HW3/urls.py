@@ -21,5 +21,6 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', views.index),
     path('<str:tf_form>/<str:text>/<str:type>', views.search),
+    path('article/<str:index>', views.article)
 
 ]
