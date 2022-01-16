@@ -15,6 +15,7 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 from nltk import pos_tag
 from gensim import corpora
 from gensim.summarization import bm25
+from gensim.models import Word2Vec
 import random
 nltk.download('averaged_perceptron_tagger')
 nltk.download('punkt')
@@ -23,7 +24,7 @@ tokenizer = nltk.data.load('tokenizers/punkt/english.pickle')
 input_word = ""
 target_col = []
 target_sentence = []
-
+model = Word2Vec.load('word2vec\\static\\assets\\docs\\word2vec.model')
 
 # Create your views here.
 def index(request):
@@ -157,15 +158,58 @@ def search(request, tf_form, text, type):
         target_sentence = sorted(target_sentence, key = lambda x: x[3], reverse = True)
     return render(request, "result.html", {'target_sentence': target_sentence[:50]})
 
+def rank_article(index):
+    global target_sentence
+
+    current_word_embedding = [0] * 250
+    word_num = 0
+    loss = []
+
+    # calculate current article's word embedding
+    data = read_data(index)
+    for j in sent_tokenize(data['abstract'][index % 10]):  # j for every sentence
+        # calculate word2vec
+        for k in word_tokenize(j):  # k for every words
+            try:
+                current_word_embedding = current_word_embedding + model[k.lower()]
+                word_num = word_num + 1
+            except:
+                continue
+    current_word_embedding = [x / word_num for x in current_word_embedding]
+
+    # ||top50 articles word embedding -  current article's word embedding||1
+    for i in range(50):
+        data = read_data(target_sentence[i][1])
+        word_embedding = [0] * 250
+        word_num = 0
+        for j in sent_tokenize(data['abstract'][target_sentence[i][1] % 10]):  # j for every sentence
+            # calculate word2vec
+            for k in word_tokenize(j):  # k for every words
+                try:
+                    word_embedding = word_embedding + model[k.lower()]
+                    word_num = word_num + 1
+                except:
+                    continue
+        word_embedding = [x / word_num for x in word_embedding]
+        loss.append(np.linalg.norm((np.array(word_embedding) - np.array(current_word_embedding)), ord=1))
+
+    recommend = []
+    loss[np.argmin(loss)] = 100000  # set a big num to delete current article in recommend list
+    for i in range(5):
+        #print(loss)
+        recommend.append(np.argmin(loss))
+        loss[np.argmin(loss)] = 100000 # set a big num to delete minimum number
+    return recommend
+
+
 
 
 def article(request, index):
+    global model
     global input_word
     global target_col
     global target_sentence
     index = int(index)
-    num_per_class = 250
-    recom_index = random.sample(range(len(target_sentence)), 5)
     recom_article = []
 
     # read title, abstract
@@ -173,7 +217,7 @@ def article(request, index):
 
     # mark
     text = ""
-    for i in sent_tokenize(data['abstract'][index % 10]):  # j for every sentence
+    for i in sent_tokenize(data['abstract'][index % 10]):  # i for every sentence
         replaced_s = i
         for j in target_col:
             replaced_s = replaced_s.replace(" " + j.split('%')[0], " <mark>" + j.split('%')[0] + "</mark>")
@@ -184,9 +228,14 @@ def article(request, index):
         text = text + replaced_s
 
     # random recommend
+    recom_index = rank_article(index)
     for i in recom_index:
         recom_data = read_data(target_sentence[i][1])
         recom_article.append([target_sentence[i][1], recom_data['title'][target_sentence[i][1] % 10]])
+
+
+
+
 
     return render(request, "article.html", {'title': data['title'][index % 10], 'abstract': text, 'recom_data': recom_article}) #必须用这个return
 
