@@ -79,16 +79,19 @@ def search(request, tf_form, text, type):
     global target_sentence
     ps = PorterStemmer()
 
-    if(text!='none' and input_word!=ps.stem(text)):
-        input_word = text
-        input_word = ps.stem(input_word)
+    if(text!='none'):
+        input_word = text.split(' ')
+        for i in range(len(input_word)):
+            input_word[i] = ps.stem(input_word[i])
 
     tfidf = pd.read_csv(os.path.join(settings.BASE_DIR, 'word2vec\\static\\assets\\docs\\tfidf (2).csv'), encoding='utf-8', engine='python')
     #print(input_word)
     target_col = []
-    for i in list(tfidf.columns):
-        if(ps.stem(i.split('%')[0])==input_word):
-            target_col.append(i)
+    for word in input_word:
+        for i in list(tfidf.columns):
+            if(ps.stem(i.split('%')[0])==word):
+                target_col.append(i)
+    #print(target_col)
 
     num_per_class = 250
     target_sentence = []
@@ -96,45 +99,26 @@ def search(request, tf_form, text, type):
     type_list = []
     for i in range(len(tfidf)):
         find = False
+        data = read_data(i)
+        score = 0
         for j in target_col:
+            score = score + tfidf[j][i]
             if(tfidf[j][i]>0 and not find):
                 find = True
-                data = read_data(i)
                 #cal_sentence(i, data['abstract'][i % 10])
-                find_s = False
-                for k in sent_tokenize(data['abstract'][i % 10]):  # j for every sentence
+                double = False
+                if (type == "aki" and i < num_per_class):
+                    double = True
+                elif (type == "diabetes_mellitus" and i >= num_per_class and i < 2 * num_per_class):
+                    double = True
+                elif (type == "heart_disease" and i >= 2 * num_per_class and i < 3 * num_per_class):
+                    double = True
+                elif (type == "covid19" and i >= 3 * num_per_class and i < 4 * num_per_class):
+                    double = True
+                type_list.append([i // 250, double])
+                target_sentence_bm25.append(data['abstract'][i % 10])  # [abstract]
+                target_sentence.append([round(score, 2), i, data['title'][i % 10]])
 
-                    temp = []
-                    for l in word_tokenize(k):  # k for every words
-                        temp.append(l.lower())
-                    tokens_tag = pos_tag(temp)
-                    #print(tokens_tag)
-                    for l in range(len(tokens_tag)):
-                        temp[l] = temp[l] + '%' + tokens_tag[l][1].lower()
-                        for m in target_col:
-                            if (m == temp[l] and not find_s):
-                                find_s = True
-                                score = tfidf[m][i]
-                                double = False
-                                if (type == "aki" and i < num_per_class):
-                                    double = True
-                                elif (type == "diabetes_mellitus" and i >= num_per_class and i < 2 * num_per_class):
-                                    double = True
-                                elif (type == "heart_disease" and i >= 2 * num_per_class and i < 3 * num_per_class):
-                                    double = True
-                                elif (type == "covid19" and i >= 3 * num_per_class and i < 4 * num_per_class):
-                                    double = True
-                                type_list.append([i//250, double])
-                                target_sentence_bm25.append(k) #[abstract]
-                                #cal_bm25(temp[l].split('%')[0], k)
-
-                                replaced_s = k.replace(" " + temp[l].split('%')[0], " <mark>" + temp[l].split('%')[0] + "</mark>")
-
-                                # Replace the title keyword
-                                insensitive = re.compile(re.escape(temp[l].split('%')[0]+" "), re.IGNORECASE)
-                                replaced_s = insensitive.sub("<mark>" + temp[l].split('%')[0].capitalize() + "</mark> ", replaced_s)
-
-                                target_sentence.append([round(score, 2), i, data['title'][i % 10]])
 
     score_bm25 = cal_bm25(target_col, target_sentence_bm25)
     for i in range(len(target_sentence)):
@@ -178,7 +162,7 @@ def rank_article(index):
     current_word_embedding = [x / word_num for x in current_word_embedding]
 
     # ||top50 articles word embedding -  current article's word embedding||1
-    for i in range(50):
+    for i in range(min(len(target_sentence), 50)):
         data = read_data(target_sentence[i][1])
         word_embedding = [0] * 250
         word_num = 0
@@ -202,11 +186,8 @@ def rank_article(index):
     return recommend
 
 
-
-
 def article(request, index):
     global model
-    global input_word
     global target_col
     global target_sentence
     index = int(index)
@@ -226,16 +207,13 @@ def article(request, index):
             insensitive = re.compile(re.escape(j.split('%')[0] + " "), re.IGNORECASE)
             replaced_s = insensitive.sub("<mark>" + j.split('%')[0].capitalize() + "</mark> ", replaced_s)
         text = text + replaced_s
+    print(text)
 
     # random recommend
     recom_index = rank_article(index)
     for i in recom_index:
         recom_data = read_data(target_sentence[i][1])
         recom_article.append([target_sentence[i][1], recom_data['title'][target_sentence[i][1] % 10]])
-
-
-
-
 
     return render(request, "article.html", {'title': data['title'][index % 10], 'abstract': text, 'recom_data': recom_article}) #必须用这个return
 
